@@ -1,13 +1,22 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
+import os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-app.secret_key = "aquapark_secret_2026"
 
-# LOGIN
+# 🔐 SECRET KEY (Render + local uchun safe)
+app.secret_key = os.environ.get("SECRET_KEY", "default_secret_key")
+
+
+# ---------------- LOGIN ----------------
 USERNAME = "admin"
 PASSWORD = "12345"
+
+
+# ---------------- PLACES ----------------
+male_places = list(range(10, 145))
+female_places = list(range(1, 10)) + list(range(145, 189)) + list(range(201, 207))
 
 
 # ---------------- DATABASE INIT ----------------
@@ -33,7 +42,7 @@ def init_db():
 init_db()
 
 
-# ---------------- STATUS ----------------
+# ---------------- CHECK STATUS ----------------
 def get_place_status(place):
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
@@ -58,7 +67,7 @@ def get_place_status(place):
     return "occupied"
 
 
-# ---------------- CLEANUP ----------------
+# ---------------- CLEAN EXPIRED ----------------
 def cleanup_expired():
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
@@ -77,12 +86,7 @@ def cleanup_expired():
     conn.close()
 
 
-# ---------------- PLACES ----------------
-male_places = list(range(10, 145))
-female_places = list(range(1, 11)) + list(range(145, 189)) + list(range(201, 207))
-
-
-# ---------------- LOGIN ----------------
+# ---------------- LOGIN PAGE ----------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -114,7 +118,7 @@ def dashboard():
     )
 
 
-# ---------------- OCCUPY ----------------
+# ---------------- OCCUPY PLACE ----------------
 @app.route("/occupy", methods=["POST"])
 def occupy():
     if not session.get("logged_in"):
@@ -195,6 +199,5 @@ def logout():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
