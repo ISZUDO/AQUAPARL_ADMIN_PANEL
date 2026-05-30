@@ -1,41 +1,95 @@
+let selectedId = null;
+let selectedEl = null;
+let activeTimers = {}; // har bir locker uchun interval saqlash
 
-// MODAL OPEN
-function openModal(place, gender) {
-    document.getElementById("placeInput").value = place;
-    document.getElementById("genderInput").value = gender;
+function selectLocker(el){
+    selectedEl = el;
+    selectedId = el.dataset.id;
     document.getElementById("modal").style.display = "flex";
 }
 
-// MODAL CLOSE
-function closeModal() {
+function closeModal(){
     document.getElementById("modal").style.display = "none";
 }
 
+function setNormal(){
+    fetch("/set_normal", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({id: selectedId})
+    })
+    .then(res => res.json())
+    .then(data => {
+        selectedEl.className = "locker busy";
+        startTimer(selectedEl, 1 * 60, selectedId);
+        closeModal();
+    });
+}
 
-// 🔄 LIVE STATUS UPDATE (FAQAT RANG)
-setInterval(() => {
+function setVIP(){
+    fetch("/set_vip", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({id: selectedId})
+    })
+    .then(res => res.json())
+    .then(data => {
+        // Agar timer bo'lsa to'xtat
+        if(activeTimers[selectedId]){
+            clearInterval(activeTimers[selectedId]);
+            delete activeTimers[selectedId];
+        }
+        selectedEl.className = "locker vip";
+        selectedEl.querySelector(".time").innerText = "VIP";
+        closeModal();
+    });
+}
 
-    fetch("/status")
-        .then(res => res.json())
-        .then(data => {
+function freeLocker(){
+    fetch("/free", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({id: selectedId})
+    })
+    .then(res => res.json())
+    .then(data => {
+        // Agar timer bo'lsa to'xtat
+        if(activeTimers[selectedId]){
+            clearInterval(activeTimers[selectedId]);
+            delete activeTimers[selectedId];
+        }
+        selectedEl.className = "locker empty";
+        selectedEl.querySelector(".time").innerText = "Bo'sh";
+        closeModal();
+    });
+}
 
-            document.querySelectorAll(".place").forEach(el => {
+function startTimer(el, seconds, id){
+    // Agar avvalgi timer bo'lsa to'xtat
+    if(activeTimers[id]){
+        clearInterval(activeTimers[id]);
+    }
 
-                let number = el.innerText.trim();
-                let status = data[number];
+    let time = seconds;
 
-                // eski ranglarni tozalash
-                el.classList.remove("free", "occupied", "expired");
+    activeTimers[id] = setInterval(() => {
+        let h = Math.floor(time / 3600);
+        let m = Math.floor((time % 3600) / 60);
+        let s = time % 60;
 
-                // faqat 2 holat:
-                if (status === "free") {
-                    el.classList.add("free");
-                } else {
-                    el.classList.add("occupied");
-                }
+        el.querySelector(".time").innerText =
+            `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
 
-            });
+        time--;
 
-        });
+        if(time < 0){
+            clearInterval(activeTimers[id]);
+            delete activeTimers[id];
+            el.className = "locker expired";
+            el.querySelector(".time").innerText = "TUGADI";
 
-}, 3000);
+            let audio = new Audio("/static/alarm.mp3");
+            audio.play();
+        }
+    }, 1000);
+}
