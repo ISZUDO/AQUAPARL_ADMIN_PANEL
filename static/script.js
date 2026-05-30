@@ -1,6 +1,6 @@
 let selectedId = null;
 let selectedEl = null;
-let activeTimers = {}; // har bir locker uchun interval saqlash
+let activeTimers = {};
 
 function selectLocker(el){
     selectedEl = el;
@@ -21,7 +21,7 @@ function setNormal(){
     .then(res => res.json())
     .then(data => {
         selectedEl.className = "locker busy";
-        startTimer(selectedEl, 1 * 60, selectedId);
+        startTimer(selectedEl, 90 * 60, selectedId);
         closeModal();
     });
 }
@@ -34,7 +34,6 @@ function setVIP(){
     })
     .then(res => res.json())
     .then(data => {
-        // Agar timer bo'lsa to'xtat
         if(activeTimers[selectedId]){
             clearInterval(activeTimers[selectedId]);
             delete activeTimers[selectedId];
@@ -53,7 +52,6 @@ function freeLocker(){
     })
     .then(res => res.json())
     .then(data => {
-        // Agar timer bo'lsa to'xtat
         if(activeTimers[selectedId]){
             clearInterval(activeTimers[selectedId]);
             delete activeTimers[selectedId];
@@ -65,7 +63,6 @@ function freeLocker(){
 }
 
 function startTimer(el, seconds, id){
-    // Agar avvalgi timer bo'lsa to'xtat
     if(activeTimers[id]){
         clearInterval(activeTimers[id]);
     }
@@ -93,3 +90,19 @@ function startTimer(el, seconds, id){
         }
     }, 1000);
 }
+
+// Sahifa ochilganda busy lockerlar uchun timerni qayta boshlash
+window.onload = function(){
+    document.querySelectorAll(".locker.busy").forEach(el => {
+        let endTime = parseInt(el.dataset.endtime);
+        let now = Math.floor(Date.now() / 1000);
+        let remaining = endTime - now;
+
+        if(remaining > 0){
+            startTimer(el, remaining, el.dataset.id);
+        } else {
+            el.className = "locker expired";
+            el.querySelector(".time").innerText = "TUGADI";
+        }
+    });
+};
